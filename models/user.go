@@ -2,6 +2,7 @@ package models
 
 import (
 	"gorm.io/gorm"
+
 )
 type User struct {
 	gorm.Model
@@ -9,4 +10,5 @@ type User struct {
 	Username string `gorm:"unique; not null"`
 	Email string	`gorm:"unique; not null"`
 	Password string	`gorm:"not null"`
+	Tasks	[]Task	`gorm:""foreignKey:User id`
 }
