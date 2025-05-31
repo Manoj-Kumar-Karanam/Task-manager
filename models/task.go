@@ -8,5 +8,5 @@ type Task struct {
 	Description string
 	Completed   bool   `gorm:"default:false"`
 	UserID      uint   // foreign key, references User table
-	User        User   `gorm:"foreignKey:UserID"`
+	User        User   `gorm:"foreignKey:UserID" json:"-"`
 }
