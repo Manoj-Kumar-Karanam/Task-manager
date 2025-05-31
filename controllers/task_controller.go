@@ -1,10 +1,13 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
-	"github.com/gin-gonic/gin"
-	"task_manager/models"
+	"strconv"
 	"task_manager/config"
+	"task_manager/models"
+
+	"github.com/gin-gonic/gin"
 )
 
 
@@ -20,20 +23,39 @@ func GetallTasks(c* gin.Context) {
 }
 
 func GetTaskbyId(c *gin.Context) {
-	id := c.Param("id")
-	var task models.Task
-	err := config.DB.Find(&task, id)
-	if err != nil {
-    	c.JSON(http.StatusNotFound, gin.H{
-        	"error": "Failed to retrieve task by id",
-        	"id":    id,
-    	})
-    	return
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
 	}
+
+	id := c.Param("id")
+	idUint, err := strconv.ParseUint(id, 10, 64) 
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
+		return
+	}
+	fmt.Println("User with id",userID,"with task id ", idUint)
+	var task models.Task
+	if err := config.DB.
+		Where("id = ? AND user_id = ?", idUint, userID).
+		First(&task).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+
 	c.JSON(http.StatusOK, task)
 }
 
 func CreateTask(c *gin.Context) {
+	userId, exists := c.Get("user_id")
+	 if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error" : "User Unauthorized",
+		})
+		return
+	 }
+
 	var newtask models.Task
 
 	// Try binding JSON to struct
@@ -43,7 +65,7 @@ func CreateTask(c *gin.Context) {
 		})
 		return
 	}
-
+	newtask.UserID = userId.(uint)
 	// Try saving to DB
 	if err := config.DB.Create(&newtask).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -58,38 +80,91 @@ func CreateTask(c *gin.Context) {
 
 
 func DeleteTask(c *gin.Context) {
+	userID, _ := c.Get("user_id")
 	id := c.Param("id")
-	var task models.Task
-	err := config.DB.Delete(&task, id).Error
+	idUint, err := strconv.ParseUint(id, 10, 64) 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error" : err.Error(),
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
+		return
+	}
+	var task models.Task
+	if err := config.DB.First(&task, idUint).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+
+	if task.UserID != userID.(uint) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You are not allowed to delete this task"})
+		return
+	}
+
+	if err := config.DB.Delete(&task).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task deleted successfully"})
+}
+
+
+func GetUsertasks(c *gin.Context) {
+	userId, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error" : "user not authorized",
 		})
 		return
-
 	}
-	c.JSON(http.StatusOK, gin.H {
-		"message" : "task deleted successfully",
-	})
+	var tasks []models.Task 
+	if err := config.DB.Where("user_id=?", userId).Find(&tasks).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error" : "cannot fetch tasks",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, tasks)
 }
 
 func UpdateTask(c *gin.Context) {
+	userID, _ := c.Get("user_id")
 	id := c.Param("id")
-	var task models.Task
-	err := config.DB.First(&task, id).Error
+	idUint, err := strconv.ParseUint(id, 10, 64) 
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error" : "cannot update",
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
 		return
 	}
-	var input models.Task
-	if err_ := c.ShouldBindJSON(&input); err_ != nil {
-		c.JSON(http.StatusBadRequest, err_.Error())
+
+	var task models.Task
+	if err := config.DB.First(&task, idUint).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
 		return
 	}
-	config.DB.Model(&task).Updates(input)
-	c.JSON(http.StatusOK, gin.H{
-		"message" : "task updated",
-	})
+
+	if task.UserID != userID.(uint) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You are not allowed to update this task"})
+		return
+	}
+
+	//new task struct that needs to be updated.
+	var input struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		Completed   bool   `json:"completed"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	task.Title = input.Title
+	task.Description = input.Description
+	task.Completed = input.Completed
+
+	if err := config.DB.Save(&task).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update task"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task updated successfully", "task": task})
 }
+
