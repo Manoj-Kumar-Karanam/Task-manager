@@ -1,10 +1,15 @@
 package main
 
 import (
+	// "fmt"
+	// "fmt"
 	"log"
 	"task_manager/config"
+	// "task_manager/controllers"
 	"task_manager/models"
+	"task_manager/routers"
 
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -13,6 +18,12 @@ func main() {
     if err != nil {
         log.Fatal("Failed to auto migrate models:", err)
     }
-
+	// fmt.Println("out")
+	// config.DB.AutoMigrate(&models.User{}, &models.Task{})
+	// fmt.Print(controllers.GetUserProfile(&gin.Context{}))
+	r := gin.Default()
+	routers.TaskRoutes(r)
+	routers.UserRoutes(r)
+	r.Run(":8080")
 }
 
