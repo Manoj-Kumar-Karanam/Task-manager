@@ -18,9 +18,6 @@ func main() {
     if err != nil {
         log.Fatal("Failed to auto migrate models:", err)
     }
-	// fmt.Println("out")
-	// config.DB.AutoMigrate(&models.User{}, &models.Task{})
-	// fmt.Print(controllers.GetUserProfile(&gin.Context{}))
 	r := gin.Default()
 	routers.TaskRoutes(r)
 	routers.UserRoutes(r)
