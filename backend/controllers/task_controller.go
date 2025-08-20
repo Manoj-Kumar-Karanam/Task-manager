@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"task_manager/config"
 	"task_manager/models"
+	"errors"
+	"gorm.io/gorm"
 
 	"github.com/gin-gonic/gin"
 )
@@ -67,6 +69,11 @@ func CreateTask(c *gin.Context) {
 	}
 	newtask.UserID = userId.(uint)
 	// Try saving to DB
+	if newtask.Title == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error" : "title Cannot be empty",
+		})
+	}
 	if err := config.DB.Create(&newtask).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Database error: " + err.Error(),
@@ -168,3 +175,21 @@ func UpdateTask(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Task updated successfully", "task": task})
 }
 
+
+
+func GetTaskDetails(c *gin.Context) {
+    taskID := c.Param("task_id")
+    var task models.Task
+
+    db := config.DB.Where("id = ?", taskID).First(&task)
+    if db.Error != nil {
+        if errors.Is(db.Error, gorm.ErrRecordNotFound) {
+            c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+        } else {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot fetch details"})
+        }
+        return
+    }
+
+    c.JSON(http.StatusOK, task)
+}

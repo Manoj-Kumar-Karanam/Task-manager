@@ -18,6 +18,7 @@ func TaskRoutes(router *gin.Engine) {
 		auth.GET("/tasks", controllers.GetUsertasks)        // List only the user's tasks
 		auth.GET("/tasks/:id", controllers.GetTaskbyId)     // Get one task (with ownership check)
 		auth.PUT("/tasks/:id", controllers.UpdateTask)      // Update task (user only)
-		auth.DELETE("/tasks/:id", controllers.DeleteTask)   // Delete task (user only)
+		auth.DELETE("/tasks/:id", controllers.DeleteTask) 
+		auth.GET("/task/:task_id", controllers.GetTaskDetails)
 	}
 }
