@@ -19,20 +19,30 @@ func GetAllUsers(c* gin.Context) {
 	c.IndentedJSON(http.StatusOK, users)
 }
 
-func RegisterUser(c* gin.Context) {
-	var Newuser models.User
-	err := c.ShouldBindJSON(&Newuser)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, err.Error())
-		return
-	}
-	if err := config.DB.Create(&Newuser).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
-		return
-	}
-	c.JSON(http.StatusCreated, gin.H{
-		"message" : "user registered",
-	})
+func RegisterUser(c *gin.Context) {
+    var Newuser models.User
+    if err := c.ShouldBindJSON(&Newuser); err != nil {
+        c.JSON(http.StatusBadRequest, err.Error())
+        return
+    }
+
+    // Hash password
+    hashedPassword, err := utils.HashPassword(Newuser.Password)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+        return
+    }
+    Newuser.Password = hashedPassword
+
+    // Save user with hashed password
+    if err := config.DB.Create(&Newuser).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, err.Error())
+        return
+    }
+
+    c.JSON(http.StatusCreated, gin.H{
+        "message": "user registered",
+    })
 }
 
 func LoginUser(c *gin.Context) {
@@ -55,10 +65,11 @@ func LoginUser(c *gin.Context) {
 	}
 
 	// Check password (plain-text comparison for now)
-	if user.Password != loginData.Password {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
-		return
+	if !utils.CheckPasswordHash(loginData.Password, user.Password) {
+    c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+    return
 	}
+
 	token, err := utils.GenerateTokens(user.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
