@@ -48,16 +48,25 @@ Task-manager/
 ├── main.go              # Entry point
 ├── go.mod / go.sum      # Dependency management
 └── .env                 # Environment variables
-```
-|-frontend/
-│ ├── src/
-│ │ ├── components/ # UI components
-│ │ ├── pages/ # Login, Register, Dashboard, Tasks
-│ │ ├── services/ # API calls (Axios)
-│ │ └── App.js # Main app entry
-│ └── package.json
 
----
+
+- frontend/
+│── src/
+│ ├── assets/ # Static assets (images, logos, etc.)
+│ ├── components/ # Reusable components
+│ │ ├── ProtectedRoute.jsx
+│ │ ├── TaskForm.jsx
+│ │ └── TaskList.jsx
+│ ├── pages/ # Page-level components
+│ │ ├── Dashboard.jsx
+│ │ ├── Login.jsx
+│ │ └── Register.jsx
+│ ├── api.js # API helper functions
+│ ├── App.css
+│ ├── App.jsx # Root component
+│ ├── index.css
+│ └── main.jsx # Entry point
+```
 
 ## 🔐 Authentication
 
